@@ -11,19 +11,33 @@ func main() {
 
 	for g.Status == game.Playing {
 		fmt.Println()
-		fmt.Println(&g.Board)
+		fmt.Println(g.Board)
 		fmt.Println("Current turn:", g.CurrentTurn)
 
-		var row int
-		var col int
+		if g.FreeMove {
+			fmt.Println("Free move: choose any board")
+		} else {
+			fmt.Printf("Required board: (%d, %d)\n", g.NextBoardRow, g.NextBoardCol)
+		}
 
-		fmt.Print("Choose row (0-2): ")
-		fmt.Scan(&row)
+		var boardRow int
+		var boardCol int
+		var cellRow int
+		var cellCol int
 
-		fmt.Print("Choose col (0-2): ")
-		fmt.Scan(&col)
+		fmt.Print("Choose board row (0-2): ")
+		fmt.Scan(&boardRow)
 
-		err := g.MakeMove(row, col)
+		fmt.Print("Choose board col (0-2): ")
+		fmt.Scan(&boardCol)
+
+		fmt.Print("Choose cell row (0-2): ")
+		fmt.Scan(&cellRow)
+
+		fmt.Print("Choose cell col (0-2): ")
+		fmt.Scan(&cellCol)
+
+		err := g.MakeMove(boardRow, boardCol, cellRow, cellCol)
 		if err != nil {
 			fmt.Println("Error:", err)
 			continue
@@ -31,7 +45,7 @@ func main() {
 	}
 
 	fmt.Println()
-	fmt.Println(&g.Board)
+	fmt.Println(g.Board)
 
 	if g.Winner != game.Empty {
 		fmt.Println("Winner:", g.Winner)
