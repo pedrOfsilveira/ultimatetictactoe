@@ -190,7 +190,7 @@ func (b SmallBoard) Lines() []string {
 			fmt.Sprintf("     %s     ", b.Winner),
 			"           ",
 			"-----------",
-			"  WON      ",
+			"    WON    ",
 		}
 	}
 
