@@ -10,8 +10,9 @@ import (
 )
 
 var playCmd = &cobra.Command{
-	Use:   "play",
-	Short: "Start a new Ultimate Tic-Tac-Toe game",
+	Use:     "play",
+	Aliases: []string{"local"},
+	Short:   "Start a new Ultimate Tic-Tac-Toe game",
 	Run: func(cmd *cobra.Command, args []string) {
 		playGame()
 	},

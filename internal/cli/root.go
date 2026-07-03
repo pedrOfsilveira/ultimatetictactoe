@@ -34,7 +34,10 @@ func startInteractiveMode() {
 THIS IS UTTT - ULTIMATE TIC-TAC-TOE
 
 Available commands:
-  play    Start a new game
+  play    Start a local game
+  local   Start a local game
+  host    Host a LAN game on port 8080
+  join    Join a LAN game (join IP:PORT)
   rules   Show the rules
   help    Show this message
   exit    Close the program`)
@@ -57,6 +60,26 @@ Available commands:
 		case "play":
 			playGame()
 
+		case "local":
+			playGame()
+
+		case "host":
+			if err := HostGame("8080"); err != nil {
+				fmt.Println("Host error:", err)
+			}
+
+		default:
+			if strings.HasPrefix(input, "join ") {
+				address := strings.TrimSpace(strings.TrimPrefix(input, "join "))
+				if err := JoinGame(address); err != nil {
+					fmt.Println("Join error:", err)
+				}
+				continue
+			}
+			fmt.Println("Unknown command:", input)
+			fmt.Println("Type 'help' to see available commands.")
+			continue
+
 		case "rules":
 			printRules()
 
@@ -67,9 +90,6 @@ Available commands:
 			fmt.Println("Goodbye!")
 			return
 
-		default:
-			fmt.Println("Unknown command:", input)
-			fmt.Println("Type 'help' to see available commands.")
 		}
 	}
 
@@ -81,7 +101,10 @@ Available commands:
 func printInteractiveHelp() {
 	fmt.Println(`
 Available commands:
-  play    Start a new game
+  play    Start a local game
+  local   Start a local game
+  host    Host a LAN game on port 8080
+  join    Join a LAN game (join IP:PORT)
   rules   Show the rules
   help    Show this message
   exit    Close the program`)
