@@ -7,29 +7,25 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"os"
 	"strconv"
 	"strings"
 
 	"github.com/pedrofsilveira/ultimatetictactoe/internal/game"
-	"github.com/spf13/cobra"
 )
 
-// NetMessage is the newline-delimited JSON protocol shared by host and client.
-// Only the host creates board states and decides whether moves are valid.
 type NetMessage struct {
-	Type         string    `json:"type"`
-	Move         *NetMove  `json:"move,omitempty"`
-	Board        string    `json:"board,omitempty"`
-	Message      string    `json:"message,omitempty"`
-	Player       game.Team `json:"player,omitempty"`
-	Turn         game.Team `json:"turn,omitempty"`
-	GameOver     bool      `json:"gameOver,omitempty"`
-	FreeMove     bool      `json:"freeMove,omitempty"`
-	NextBoardRow int       `json:"nextBoardRow,omitempty"`
-	NextBoardCol int       `json:"nextBoardCol,omitempty"`
+	Type         string     `json:"type"`
+	Move         *NetMove   `json:"move,omitempty"`
+	Board        string     `json:"board,omitempty"`
+	Game         *game.Game `json:"game,omitempty"`
+	Message      string     `json:"message,omitempty"`
+	Player       game.Team  `json:"player,omitempty"`
+	Turn         game.Team  `json:"turn,omitempty"`
+	GameOver     bool       `json:"gameOver,omitempty"`
+	FreeMove     bool       `json:"freeMove,omitempty"`
+	NextBoardRow int        `json:"nextBoardRow,omitempty"`
+	NextBoardCol int        `json:"nextBoardCol,omitempty"`
 }
-
 type NetMove struct {
 	BoardRow int `json:"boardRow"`
 	BoardCol int `json:"boardCol"`
@@ -37,30 +33,6 @@ type NetMove struct {
 	CellCol  int `json:"cellCol"`
 }
 
-var hostCmd = &cobra.Command{
-	Use:   "host",
-	Short: "Host a LAN multiplayer game",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		port, _ := cmd.Flags().GetString("port")
-		return HostGame(port)
-	},
-}
-
-var joinCmd = &cobra.Command{
-	Use:   "join ADDRESS",
-	Short: "Join a LAN multiplayer game",
-	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return JoinGame(args[0])
-	},
-}
-
-func init() {
-	hostCmd.Flags().String("port", "8080", "TCP port to listen on")
-	rootCmd.AddCommand(hostCmd, joinCmd)
-}
-
-// HostGame listens on every network interface and owns the official game state.
 func HostGame(port string) error {
 	port = strings.TrimPrefix(strings.TrimSpace(port), ":")
 	portNumber, err := strconv.Atoi(port)
@@ -86,7 +58,6 @@ func HostGame(port string) error {
 
 	g := game.NewGame("Host", "Player 2")
 	g.PickX(1)
-	reader := bufio.NewReader(os.Stdin)
 	remote := bufio.NewScanner(conn)
 
 	if err := sendMessage(conn, NetMessage{Type: "welcome", Player: game.O, Message: "Connected to host. You are O."}); err != nil {
@@ -104,7 +75,7 @@ func HostGame(port string) error {
 
 		if g.CurrentTurn == game.X {
 			fmt.Println("Your turn. You are X.")
-			move, err := promptMove(reader, g.FreeMove, g.NextBoardRow, g.NextBoardCol)
+			move, err := selectNetworkMove(g)
 			if err != nil {
 				return err
 			}
@@ -152,7 +123,6 @@ func HostGame(port string) error {
 	return nil
 }
 
-// JoinGame is intentionally display/input-only; all rule decisions stay on the host.
 func JoinGame(address string) error {
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
@@ -162,7 +132,6 @@ func JoinGame(address string) error {
 
 	fmt.Println("Connected to host.")
 	remote := bufio.NewScanner(conn)
-	input := bufio.NewReader(os.Stdin)
 
 	for {
 		message, err := readMessage(remote)
@@ -197,7 +166,10 @@ func JoinGame(address string) error {
 			}
 
 			fmt.Println("Your turn. You are O.")
-			move, err := promptMove(input, message.FreeMove, message.NextBoardRow, message.NextBoardCol)
+			if message.Game == nil {
+				return errors.New("host did not send game state")
+			}
+			move, err := selectNetworkMove(message.Game)
 			if err != nil {
 				return err
 			}
@@ -221,6 +193,7 @@ func stateMessage(g *game.Game, messageType, message string) NetMessage {
 	return NetMessage{
 		Type:         messageType,
 		Board:        renderBoard(g),
+		Game:         g,
 		Message:      message,
 		Turn:         g.CurrentTurn,
 		GameOver:     g.Status == game.Finished,
@@ -307,4 +280,8 @@ func gameResult(g *game.Game) string {
 		return "Winner: " + string(g.Winner)
 	}
 	return "Draw!"
+}
+
+func clearScreen() {
+	fmt.Print("\033[2J\033[H")
 }

@@ -1,111 +1,81 @@
 package cli
 
 import (
-	"bufio"
+	"flag"
 	"fmt"
 	"os"
-	"strings"
-
-	"github.com/spf13/cobra"
 )
 
-var rootCmd = &cobra.Command{
-	Use:   "uttt",
-	Short: "Ultimate Tic-Tac-Toe CLI",
-	Long:  "UTTT - Ultimate Tic-Tac-Toe CLI",
-	Run: func(cmd *cobra.Command, args []string) {
-		startInteractiveMode()
-	},
-}
-
 func Execute() {
-	// The app supports being opened from Windows Explorer through the launcher.
-	// Cobra's default mousetrap warning would incorrectly reject that launch.
-	cobra.MousetrapHelpText = ""
+	args := os.Args[1:]
+	if len(args) == 0 {
+		runInteractiveMenu()
+		return
+	}
 
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+	var err error
+	switch args[0] {
+	case "play", "local":
+		err = playGame()
+	case "host":
+		flags := flag.NewFlagSet("host", flag.ContinueOnError)
+		port := flags.String("port", "8080", "TCP port to listen on")
+		if err = flags.Parse(args[1:]); err == nil {
+			err = HostGame(*port)
+		}
+	case "join":
+		if len(args) != 2 {
+			err = fmt.Errorf("usage: uttt join ADDRESS")
+		} else {
+			err = JoinGame(args[1])
+		}
+	case "rules":
+		printRules()
+	case "help", "-h", "--help":
+		printHelp()
+	default:
+		err = fmt.Errorf("unknown command %q\n\nRun 'uttt help' for usage", args[0])
+	}
+
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
 	}
 }
 
-func startInteractiveMode() {
-	fmt.Println(`
-THIS IS UTTT - ULTIMATE TIC-TAC-TOE
-
-Available commands:
-  play    Start a local game
-  local   Start a local game
-  host    Host a LAN game on port 8080
-  join    Join a LAN game (join IP:PORT)
-  rules   Show the rules
-  help    Show this message
-  exit    Close the program`)
-
-	scanner := bufio.NewScanner(os.Stdin)
-
+func runInteractiveMenu() {
 	for {
-		fmt.Print("uttt> ")
-
-		if !scanner.Scan() {
-			break
-		}
-
-		input := strings.TrimSpace(scanner.Text())
-
-		switch input {
-		case "":
-			continue
-
-		case "play":
-			playGame()
-
-		case "local":
-			playGame()
-
-		case "host":
-			if err := HostGame("8080"); err != nil {
-				fmt.Println("Host error:", err)
-			}
-
-		default:
-			if strings.HasPrefix(input, "join ") {
-				address := strings.TrimSpace(strings.TrimPrefix(input, "join "))
-				if err := JoinGame(address); err != nil {
-					fmt.Println("Join error:", err)
-				}
-				continue
-			}
-			fmt.Println("Unknown command:", input)
-			fmt.Println("Type 'help' to see available commands.")
-			continue
-
-		case "rules":
-			printRules()
-
-		case "help":
-			printInteractiveHelp()
-
-		case "exit", "quit":
-			fmt.Println("Goodbye!")
+		menu, err := runMenu()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Error:", err)
 			return
-
 		}
-	}
 
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintln(os.Stderr, "Error reading input:", err)
+		switch menu.action {
+		case menuLocal:
+			err = playGame()
+		case menuHost:
+			err = HostGame("8080")
+		case menuJoin:
+			err = JoinGame(menu.address)
+		case menuQuit, menuNone:
+			return
+		}
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Error:", err)
+		}
 	}
 }
 
-func printInteractiveHelp() {
-	fmt.Println(`
-Available commands:
-  play    Start a local game
-  local   Start a local game
-  host    Host a LAN game on port 8080
-  join    Join a LAN game (join IP:PORT)
-  rules   Show the rules
-  help    Show this message
-  exit    Close the program`)
+func printHelp() {
+	fmt.Println(`UTTT - Ultimate Tic-Tac-Toe
+
+Usage:
+  uttt                 Open the interactive menu
+  uttt play|local      Start a local game
+  uttt host [--port]   Host a LAN game
+  uttt join ADDRESS    Join a LAN game
+  uttt rules           Show the rules
+
+Controls: arrow keys move, Enter selects/plays, Esc goes back, q quits.`)
 }

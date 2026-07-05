@@ -14,18 +14,15 @@ From the project root, download the dependencies:
 go mod download
 ```
 
-Start the interactive CLI:
+Start the Bubble Tea TUI:
 
 ```bash
 go run ./cmd/cli
 ```
 
-At the `uttt>` prompt, use one of these commands:
-
-- `play` starts a new game.
-- `rules` displays the rules.
-- `help` lists the available commands.
-- `exit` closes the program.
+Use the arrow keys to highlight a small board and press **Enter** to select it.
+Then use the arrow keys to highlight a cell and press **Enter** to play. Press
+**Esc** to return to board selection during a free move, or **q** to quit.
 
 You can also run a command directly:
 
@@ -59,7 +56,7 @@ to allow the executable; allow it on Private networks for LAN play.
 On Windows:
 
 ```powershell
-go build -ldflags="-H windowsgui" -o bin\UltimateTicTacToe.exe .\cmd\launcher
+go build -o bin\UltimateTicTacToe.exe .\cmd\cli
 .\bin\UltimateTicTacToe.exe
 ```
 
@@ -72,4 +69,5 @@ go build -o bin/uttt ./cmd/cli
 
 ## Playing
 
-Rows and columns use values from `0` to `2`. On a free move, choose the small board first, then choose a cell. Otherwise, the previous move determines the required small board.
+On a free move, choose the highlighted small board first, then choose a cell.
+Otherwise, the previous move determines and highlights the required small board.
